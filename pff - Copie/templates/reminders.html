@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Arkivo - Rappels</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reminders.css') }}" />
+    <!-- Add Bootstrap CSS for modal if needed -->
+    <style>
+
+    </style>
+</head>
+
+<body>
+    <div class="cursor"></div>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1 class="logo">Arkivo</h1>
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                <i class="fas fa-chevron-left" id="toggleIcon"></i>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i> <span
+                            class="link-text">Dashboard</span></a></li>
+                <li><a href="{{ url_for('folders') }}" ><i class="fas fa-folder"></i> <span
+                            class="link-text">Dossiers</span></a></li>
+                <li><a href="{{ url_for('reminders') }}" class="active"><i class="fas fa-bell"></i> <span
+                            class="link-text">Rappels</span></a></li>
+                <li><a href="{{ url_for('account') }}"><i class="fas fa-user"></i> <span
+                            class="link-text">Profil</span></a></li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span class="logout-text">Déconnexion</span>
+            </a>
+        </div>
+    </aside>
+
+    <main class="dashboard-main" id="main">
+        <!-- Welcome Section -->
+        <section class="welcome-section fade-in">
+            <div class="welcome-card">
+                <div class="profile-info">
+                    <div class="profile-pic">
+                        <img src="{{ session.profile_pic or url_for('static', filename='images/default-profile.png') }}"
+                            alt="Photo de profil" class="profile-image">
+                    </div>
+                    <div class="profile-text">
+                        <h2>Bienvenue, {{ session.fullname }}</h2>
+                        <p>{{ session.user_email }}</p>
+                    </div>
+
+                    <div class="notification-icon" title="Notifications" id="notifToggle">
+                        <i class="fas fa-bell"></i>
+                        {% if notif_count > 0 %}
+                        <span class="badge" id="notifCount">{{ notif_count }}</span>
+                        {% endif %}
+                        <div class="notification-dropdown">
+                            <ul>
+                                {% for notif in notifications %}
+                                <li>{{ notif['message'] }}</li>
+                                {% else %}
+                                <li>Aucune notification pour le moment.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="quick-actions">
+                    <a href="#" class="upload-icon" data-bs-toggle="modal" data-bs-target="#addReminderModal">
+                        <i class="fas fa-plus-circle"></i>
+                    </a>
+                </div>
+            </div>
+        </section>
+{% with messages = get_flashed_messages(with_categories=True) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="flash-message {{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+        <!-- Filters Section -->
+        <section class="dashboard-section">
+            <div class="filters-container">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Rechercher un rappel...">
+                </div>
+                <div class="filter-buttons">
+                    <button class="filter-btn active">
+                        <i class="fas fa-list"></i> Tous
+                    </button>
+                    <button class="filter-btn">
+                        <i class="fas fa-exclamation-triangle"></i> En retard
+                    </button>
+                    <button class="filter-btn">
+                        <i class="fas fa-clock"></i> Bientôt
+                    </button>
+                </div>
+                <div class="sort-dropdown">
+                    <select class="sort-select">
+                        <option>Date croissante</option>
+                        <option>Date décroissante</option>
+                        <option>Titre A-Z</option>
+                        <option>Titre Z-A</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Reminders List Section -->
+        <section class="dashboard-section">
+            <div class="section-header">
+                <h2><i class="fas fa-bell"></i> Mes Rappels</h2>
+                <div class="header-actions">
+                    <span class="count-badge">{{ reminders|length }} rappel(s)</span>
+                    <button class="btn btn-outline">
+                        <i class="fas fa-check-square"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="reminders-container">
+                <div class="reminders-grid">
+                    {% if reminders %}
+                    {% for reminder in reminders %}
+                    <div
+                        class="reminder-card {% if reminder.is_overdue %}overdue{% elif reminder.is_due_soon %}due-soon{% endif %}">
+                        <div class="reminder-content">
+                            <h3>{{ reminder.title }}</h3>
+                            {% if reminder.description %}
+                            <p>{{ reminder.description[:50] }}{% if reminder.description|length > 50 %}...{% endif %}
+                            </p>
+                            {% endif %}
+                            <div class="reminder-details">
+                                <div class="detail-item">
+                                    <i class="fas fa-calendar"></i>
+                                    <span>{{ reminder.due_date|datetimeformat('%d/%m/%Y') }}</span>
+                                </div>
+                                {% if reminder.due_time %}
+                                <div class="detail-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span>{{ reminder.due_time }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="time-remaining">
+                                {% if reminder.is_overdue %}
+                                <span class="overdue">En retard de {{ reminder.days_overdue }} jour(s)</span>
+                                {% elif reminder.is_due_soon %}
+                                <span class="due-soon">Dans {{ reminder.days_until_due }} jour(s)</span>
+                                {% else %}
+                                <span>Dans {{ reminder.days_until_due }} jour(s)</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="reminder-actions">
+                            <button class="action-btn done" title="Marquer terminé">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button class="action-btn" title="Modifier">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="action-btn delete" title="Supprimer">
+                                <form action="{{ url_for('delete_reminder', reminder_id=reminder.id) }}" method="POST">
+
+                                    <i class="fas fa-trash" onclick="return confirm('Supprimer ce rappel ?')"></i>
+
+                                </form>
+
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-bell-slash"></i>
+                        </div>
+                        <h3>Aucun rappel trouvé</h3>
+                        <p>Créez votre premier rappel pour ne plus rien oublier</p>
+                        <button class="btn" data-bs-toggle="modal" data-bs-target="#addReminderModal">
+                            <i class="fas fa-bell-plus"></i> Créer un rappel
+                        </button>
+
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Add Reminder Modal -->
+    <div class="modal fade" id="addReminderModal" tabindex="-1" aria-labelledby="addReminderLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{{ url_for('add_reminder') }}">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addReminderLabel">Ajouter un rappel</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Titre *</label>
+                            <input type="text" class="form-control" id="title" name="title" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="due_date" class="form-label">Date d'échéance *</label>
+                            <input type="date" class="form-control" id="due_date" name="due_date" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="due_time" class="form-label">Heure d'échéance</label>
+                            <input type="time" class="form-control" id="due_time" name="due_time" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="file_id" class="form-label">Fichier associé</label>
+                            <select id="file_id" name="file_id" class="form-select">
+                                <option value="" selected>Aucun</option>
+                                {% for file in files %}
+                                <option value="{{ file.id }}">{{ file.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reminder_days" class="form-label">Rappel avant (jours)</label>
+                            <input type="number" min="0" class="form-control" id="reminder_days" name="reminder_days"
+                                value="0" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Ajouter</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const main = document.getElementById('main');
+            const icon = document.getElementById('toggleIcon');
+
+            sidebar.classList.toggle('collapsed');
+            main.classList.toggle('collapsed');
+
+            icon.classList.toggle('fa-chevron-left');
+            icon.classList.toggle('fa-chevron-right');
+        }
+        // Fonction pour détecter si `show_modal=true` est dans l'URL
+        window.addEventListener("DOMContentLoaded", () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("show_modal") === "true") {
+                const modal = new bootstrap.Modal(document.getElementById('addReminderModal'));
+                modal.show();
+            }
+        });
+        document.addEventListener('DOMContentLoaded', function () {
+            const notifToggle = document.getElementById('notifToggle');
+            const dropdown = notifToggle.querySelector('.notification-dropdown');
+            const notifCount = document.getElementById('notifCount');
+
+            notifToggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (dropdown.style.display === 'block') {
+                    dropdown.style.display = 'none';
+                } else {
+                    dropdown.style.display = 'block';
+                    if (notifCount) {
+                        notifCount.style.display = 'none';
+                    }
+                }
+            });
+
+            document.addEventListener('click', function () {
+                dropdown.style.display = 'none';
+            });
+        });
+        data.forEach(notif => {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${notif.type.toUpperCase()}:</strong> ${notif.message}`;
+            notifListElem.appendChild(li);
+        });
+        function fetchNotifications() {
+            fetch('/api/notifications')
+                .then(response => response.json())
+                .then(data => {
+                    const notifCountElem = document.getElementById('notifCount');
+                    const notifListElem = document.querySelector('.notification-dropdown ul');
+
+                    if (!Array.isArray(data)) {
+                        return; // Not logged in or error
+                    }
+
+                    if (data.length > 0) {
+                        notifCountElem.style.display = 'inline-block';
+                        notifCountElem.textContent = data.length;
+
+                        notifListElem.innerHTML = '';
+                        data.forEach(notif => {
+                            const li = document.createElement('li');
+                            li.textContent = notif.message;
+                            notifListElem.appendChild(li);
+                        });
+                    } else {
+                        notifCountElem.style.display = 'none';
+                        notifListElem.innerHTML = '<li>Aucune notification pour le moment.</li>';
+                    }
+                })
+                .catch(console.error);
+        }
+
+        notifToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+
+            if (dropdown.classList.contains('show')) {
+                // Mark notifications as read on the server
+                fetch('/api/notifications/read', {
+                    method: 'POST'
+                }).then(() => {
+                    const notifCountElem = document.getElementById('notifCount');
+                    if (notifCountElem) notifCountElem.style.display = 'none';
+                }).catch(console.error);
+            }
+        });
+
+
+
+        document.addEventListener('click', function () {
+            dropdown.classList.remove('show');
+        });
+
+        // استدعي اول مرة عند تحميل الصفحة
+        fetchNotifications();
+
+        // استدعي كل 60 ثانية (60000 مللي ثانية)
+        setInterval(fetchNotifications, 60000);
+    </script>
+
+</body>
+
+</html>

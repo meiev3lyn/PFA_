@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Arkivo - Mon Profil{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}" />
+</head>
+
+<body>
+
+  <div class="cursor"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1 class="logo">Arkivo</h1>
+      <button class="toggle-btn" onclick="toggleSidebar()">
+        <i class="fas fa-chevron-left" id="toggleIcon"></i>
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <ul>
+        <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt"></i><span
+              class="link-text">Dashboard</span></a></li>
+        <li><a href="{{ url_for('folders') }}"><i class="fas fa-folder"></i><span class="link-text">Dossiers</span></a>
+        </li>
+        <li><a href="{{ url_for('reminders') }}"><i class="fas fa-bell"></i><span class="link-text">Rappels</span></a>
+        </li>
+        <li><a href="{{ url_for('account') }}" class="active"><i class="fas fa-user"></i><span
+              class="link-text">Profil</span></a></li>
+      </ul>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="#" id="logoutBtn" class="logout-btn">
+        <i class="fas fa-sign-out-alt"></i>
+        <span class="logout-text" >Déconnexion</span>
+      </a>
+    </div>
+  </aside>
+<!-- Modal simple (tu peux styliser comme tu veux) -->
+<div id="logoutModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <p>Êtes-vous sûr de vouloir vous déconnecter ?</p>
+    <button id="confirmLogoutBtn">Oui, déconnecter</button>
+    <button id="cancelLogoutBtn">Annuler</button>
+  </div>
+</div>
+
+  <main class="dashboard-main" id="main">
+  
+
+  <section class="profile-container">
+    
+    <div class="profile-header">
+      <div class="profile-picture">
+        <div class="profile-picture-wrapper" onclick="openImageModal()">
+          <img src="{{ session.profile_pic or url_for('static', filename='images/default-profile.png') }}" id="profilePreview" alt="Photo de Profil" />
+          <div class="profile-upload-btn"><i class="fas fa-camera"></i></div>
+        </div>
+      </div>
+      <h1 class="profile-title">{{ session.fullname or 'Utilisateur' }}</h1>
+      <p class="profile-subtitle">{{ session.user_email or 'email@example.com' }}</p>
+    </div>
+
+  {% with messages = get_flashed_messages(with_categories=True) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="flash-message {{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+    <!-- Modal pour la mise à jour de l’image -->
+<div class="modal" id="imageUploadModal" style="display:none;">
+  <div class="modal-content">
+    <span class="close" onclick="closeImageModal()">&times;</span>
+    <h3>Mettre à jour la photo de profil</h3>
+    <p>Choisissez une image depuis votre appareil. Formats acceptés : JPG, PNG, GIF.</p>
+    <form action="{{ url_for('account') }}" method="POST" enctype="multipart/form-data">
+      <div class="form-group">
+        <input type="file" name="profile_picture" accept="image/*" required
+               style="width: 100%; padding: 0.6rem; border-radius: var(--radius); border: 1px solid #ccc;">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeImageModal()">Annuler</button>
+        <button type="submit" class="btn btn-upload"><i class="fas fa-upload"></i> Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+    <div class="profile-content">
+      <div class="form-section">
+        <h2><i class="fas fa-user-edit"></i> Informations Personnelles</h2>
+        <form action="{{ url_for('account') }}" method="POST">
+          <input type="hidden" name="action" value="update_fullname">
+          <div class="form-group">
+            <label for="fullname">Nom Complet :</label><br>
+            <div class="input-wrapper">
+              <i class="fas fa-user input-icon"></i>
+              <input type="text" name="fullname" id="fullname" value="{{ session.fullname }}" required>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Mettre à jour</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="form-section">
+        <form action="{{ url_for('account') }}" method="POST">
+          <input type="hidden" name="action" value="update_email">
+          <div class="form-group">
+            <label for="email">Adresse Email :</label><br>
+            <div class="input-wrapper">
+              <i class="fas fa-envelope input-icon"></i>
+              <input type="email" name="email" id="email" value="{{ session.user_email }}" required>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Mettre à jour</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="form-section">
+        <form action="{{ url_for('account') }}" method="POST">
+          <div class="form-group">
+            <label for="current_password">Mot de passe actuel :</label><br>
+            <div class="input-wrapper">
+              <i class="fas fa-key input-icon"></i>
+              <input type="password" name="current_password" required>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="new_password">Nouveau mot de passe :</label><br>
+              <div class="input-wrapper">
+                <i class="fas fa-lock input-icon"></i>
+                <input type="password" name="new_password" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="confirm_password">Confirmer le mot de passe :</label><br>
+              <div class="input-wrapper">
+                <i class="fas fa-check-circle input-icon"></i>
+                <input type="password" name="confirm_password" required>
+              </div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-shield-alt"></i> Mettre à jour</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="form-section danger">
+        <button id="openDeleteModalBtn" class="btn btn-danger"><i class="fas fa-trash-alt"></i> Supprimer mon compte</button>
+                <p class="warning-text">Toutes vos données seront définitivement supprimées.</p>
+
+        <div id="deleteAccountModal" class="modal" style="display:none;">
+          <div class="modal-content">
+                      <span class="close" onclick="closeImageModal()">&times;</span>
+
+            <h3>Confirmer la suppression</h3>
+            <p>Veuillez entrer votre mot de passe actuel pour confirmer la suppression.</p>
+            <form action="{{ url_for('delete_account') }}" method="POST">
+              <div class="form-group">
+                <input type="password" name="confirm_password" placeholder="Mot de passe actuel" required>
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Annuler</button>
+                <button type="submit" class="btn btn-upload">Confirmer</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const main = document.getElementById('main');
+      const icon = document.getElementById('toggleIcon');
+      sidebar.classList.toggle('collapsed');
+      main.classList.toggle('collapsed');
+      icon.classList.toggle('fa-chevron-left');
+      icon.classList.toggle('fa-chevron-right');
+    }
+
+    function openImageModal() {
+      document.getElementById('imageUploadModal').style.display = 'block';
+    }
+
+    function closeImageModal() {
+      document.getElementById('imageUploadModal').style.display = 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const notifToggle = document.getElementById('notifToggle');
+      const dropdown = notifToggle.querySelector('.notification-dropdown');
+      const notifCount = document.getElementById('notifCount');
+
+      notifToggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        if (notifCount) notifCount.style.display = 'none';
+      });
+
+      document.addEventListener('click', function (e) {
+        if (!notifToggle.contains(e.target)) {
+          dropdown.style.display = 'none';
+        }
+      });
+    });
+    document.getElementById('openDeleteModalBtn').addEventListener('click', function () {
+      document.getElementById('deleteAccountModal').style.display = 'flex';
+    });
+
+    document.getElementById('cancelDeleteBtn').addEventListener('click', function () {
+      document.getElementById('deleteAccountModal').style.display = 'none';
+    });
+
+    // Optional: fermer modal en cliquant à l'extérieur du contenu
+    window.addEventListener('click', function (e) {
+      const modal = document.getElementById('deleteAccountModal');
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+document.getElementById('logoutBtn').addEventListener('click', function(e) {
+  e.preventDefault();
+  document.getElementById('logoutModal').style.display = 'block';
+});
+
+document.getElementById('confirmLogoutBtn').addEventListener('click', function() {
+  window.location.href = "{{ url_for('logout') }}";
+});
+
+document.getElementById('cancelLogoutBtn').addEventListener('click', function() {
+  document.getElementById('logoutModal').style.display = 'none';
+});
+
+  </script>
+</body>
+
+</html>
