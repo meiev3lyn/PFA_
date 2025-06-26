@@ -21,7 +21,7 @@ from flask_apscheduler import APScheduler
 os.environ['TESSDATA_PREFIX'] = r'C:\Program Files\Tesseract-OCR\tessdata'
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
+
 scheduler = APScheduler()
 
 @scheduler.task('interval', id='send_reminders_job', minutes=1)
@@ -51,7 +51,7 @@ def get_db():
     conn = sqlite3.connect('app.db')
     conn.row_factory = sqlite3.Row
     return conn
-BREVO_API_KEY = "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"
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
 SENDER_EMAIL = "akramououissal@gmail.com"  # تأكدي يكون مفعل فـ Brevo
 SENDER_NAME = "arkivo"
 
